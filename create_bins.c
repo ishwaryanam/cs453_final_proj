@@ -5,6 +5,7 @@
 
 #define BUFFER_LEN 256
 #define DISK_SIZE 24576
+#define BLOCK_SIZE 256
 
 int main()
 {
@@ -23,32 +24,55 @@ int main()
         num_commands++;
     }
 
-    /*
-    for(int k = 0; k<num_commands; k++){
-         printf("%s\n", commands[k]);
-    }
-    */
-
-    //char* command = "CREATE 2 4";
     int num_disks = 0;
+    
 
 
 
     for(int i = 0; i<num_commands; i++){
-        char bin_name[50];
+        char disk_name[50];
         char* curr_command = strtok(commands[i], " ");
         printf("%s\n", curr_command);
         int file_number = atoi(strtok(NULL," "));
         printf("%d\n", file_number);
 
         if(strcmp(curr_command, "CREATE") == 0){
-            printf("hey\n");
+ 
+            //get info from command 
             int num_blocks = atoi(strtok(NULL, " "));
             printf("%d\n", num_blocks);
-            sprintf(bin_name, "step_%d.bin", num_disks);
+            sprintf(disk_name, "step_%d.bin", num_disks);
             num_disks++;
-            printf("%s\n", bin_name);
-            openDisk(bin_name, DISK_SIZE);
+            printf("%s\n", disk_name);
+
+            //open first disk
+            openDisk(disk_name, DISK_SIZE);
+
+            //superblock
+            char block[BLOCK_SIZE];
+            block[0] = 1;
+            //keep track of free files
+
+            if (writeBlock(disk_name, 0, block) < 0)
+            {
+                closeDisk(disk_name);
+                return WRITE_FUNC_FAILURE;
+            }
+
+            //inode
+            memset(block, 0x00, BLOCK_SIZE);
+            block[0] = file_number;
+            // loop to store where the other blocks will go
+
+
+
+
+            
+
+
+
+
+
 
         }
         else if(strcmp(curr_command, "DELETE") == 0){
