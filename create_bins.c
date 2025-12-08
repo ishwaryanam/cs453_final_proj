@@ -12,7 +12,7 @@ int main()
     char commands[10][256];
     FILE *fptr;
 
-    //CHANGE FILE TO INPUT AGAIN
+    // CHANGE FILE TO INPUT AGAIN
     fptr = fopen("input_test.txt", "r");
 
     char buffer[BUFFER_LEN];
@@ -25,60 +25,84 @@ int main()
     }
 
     int num_disks = 0;
-    
+    int curr_free_vert = 1;
 
-
-
-    for(int i = 0; i<num_commands; i++){
+    for (int i = 0; i < num_commands; i++)
+    {
         char disk_name[50];
-        char* curr_command = strtok(commands[i], " ");
-        printf("%s\n", curr_command);
-        int file_number = atoi(strtok(NULL," "));
-        printf("%d\n", file_number);
+        char *curr_command = strtok(commands[i], " ");
+        // printf("%s\n", curr_command);
+        int file_number = atoi(strtok(NULL, " "));
+        // printf("%d\n", file_number);
 
-        if(strcmp(curr_command, "CREATE") == 0){
- 
-            //get info from command 
+        if (strcmp(curr_command, "CREATE") == 0)
+        {
+
+            // get info from command
             int num_blocks = atoi(strtok(NULL, " "));
-            printf("%d\n", num_blocks);
+
             sprintf(disk_name, "step_%d.bin", num_disks);
             num_disks++;
-            printf("%s\n", disk_name);
 
-            //open first disk
-            openDisk(disk_name, DISK_SIZE);
+            // open first disk
+            int disk = openDisk(disk_name, DISK_SIZE);
+            // error check disk
 
-            //superblock
-            char block[BLOCK_SIZE];
-            block[0] = 1;
-            //keep track of free files
+            // superblock
+            char super_block[BLOCK_SIZE];
+            super_block[0] = 1;
+            // keep track of free blocks
 
-            if (writeBlock(disk_name, 0, block) < 0)
+            if (writeBlock(disk, 0, super_block) < 0)
             {
-                closeDisk(disk_name);
+
                 return WRITE_FUNC_FAILURE;
             }
 
-            //inode
-            memset(block, 0x00, BLOCK_SIZE);
-            block[0] = file_number;
-            // loop to store where the other blocks will go
+            /*
+            if (writeBlock(disk, 1, super_block) < 0)
+            {
 
+                return WRITE_FUNC_FAILURE;
+            }
+            */
 
+            // inode
+            char inode_block[BLOCK_SIZE];
+            inode_block[0] = file_number;
+            //int block_index = 1;
+            for (int i = 1; i < num_blocks; i++)
+            {
+                inode_block[i] = curr_free_vert + (24 * i);
+                printf("%d\n", curr_free_vert + (24 * i));
+            }
 
+            /*
+            printf("here");
+            printf("%d\n", inode_block[1]);
+            printf("%d\n", inode_block[2]);
+            printf("%d\n", inode_block[3]);
+            printf("here");
+            */
+
+            if (writeBlock(disk, 1, inode_block) < 0)
+            {
+                return WRITE_FUNC_FAILURE;
+            }
+
+            char data_block[BLOCK_SIZE];
+            data_block[0] = file_number;
 
             
-
-
-
-
-
-
+            for(int i = 1; i<num_blocks-1;i++){
+                writeBlock(disk, inode_block[i], data_block);
+            }
+            
         }
-        else if(strcmp(curr_command, "DELETE") == 0){
+        else if (strcmp(curr_command, "DELETE") == 0)
+        {
             printf("ok\n");
         }
-
     }
 
     return 0;
