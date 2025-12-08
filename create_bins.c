@@ -6,10 +6,23 @@
 #define BUFFER_LEN 256
 #define DISK_SIZE 24576
 #define BLOCK_SIZE 256
+#define TOTAL_BLOCKS 96
 
 int main()
 {
-    char commands[10][256];
+    char commands[10][BLOCK_SIZE];
+    _Bool free_block[TOTAL_BLOCKS];
+    int file_to_inode[10][TOTAL_BLOCKS-1]; //will just keep 0 and 1 as unused
+    memset(file_to_inode, 0, sizeof(file_to_inode)); //okay bc will never have 0 as a data block
+    uint8_t hdd[TOTAL_BLOCKS][BLOCK_SIZE];
+    memset(hdd, 0, sizeof(hdd));
+    int num_disks = 0;
+    int curr_free_vert = 1;
+    char inode_block[BLOCK_SIZE];
+    char data_block[BLOCK_SIZE];
+    
+    hdd[0][0] = 1; //superblock
+
     FILE *fptr;
 
     // CHANGE FILE TO INPUT AGAIN
@@ -23,81 +36,51 @@ int main()
         strcpy(commands[num_commands], buffer);
         num_commands++;
     }
-
-    int num_disks = 0;
-    int curr_free_vert = 1;
-
+    
     for (int i = 0; i < num_commands; i++)
     {
         char disk_name[50];
         char *curr_command = strtok(commands[i], " ");
-        // printf("%s\n", curr_command);
         int file_number = atoi(strtok(NULL, " "));
-        // printf("%d\n", file_number);
 
         if (strcmp(curr_command, "CREATE") == 0)
         {
-
-            // get info from command
             int num_blocks = atoi(strtok(NULL, " "));
 
             sprintf(disk_name, "step_%d.bin", num_disks);
             num_disks++;
-
-            // open first disk
+    
             int disk = openDisk(disk_name, DISK_SIZE);
-            // error check disk
-
-            // superblock
-            char super_block[BLOCK_SIZE];
-            super_block[0] = 1;
-            // keep track of free blocks
-
-            if (writeBlock(disk, 0, super_block) < 0)
+            if (disk < 0)
             {
-
-                return WRITE_FUNC_FAILURE;
+                return -1; // return error code from openDisk
             }
 
-            /*
-            if (writeBlock(disk, 1, super_block) < 0)
-            {
-
-                return WRITE_FUNC_FAILURE;
-            }
-            */
-
-            // inode
-            char inode_block[BLOCK_SIZE];
+            
+            memset(inode_block, 0, BLOCK_SIZE);
             inode_block[0] = file_number;
-            //int block_index = 1;
             for (int i = 1; i < num_blocks; i++)
             {
                 inode_block[i] = curr_free_vert + (24 * i);
-                printf("%d\n", curr_free_vert + (24 * i));
             }
+            memcpy(hdd[curr_free_vert], inode_block, BLOCK_SIZE);
+            curr_free_vert++;
 
-            /*
-            printf("here");
-            printf("%d\n", inode_block[1]);
-            printf("%d\n", inode_block[2]);
-            printf("%d\n", inode_block[3]);
-            printf("here");
-            */
+            //UPDATE FREE LIST FOR SUPER BLOCK
+            //UPDATE FILE TO POINTER TO USE FOR DELETE
 
-            if (writeBlock(disk, 1, inode_block) < 0)
-            {
-                return WRITE_FUNC_FAILURE;
-            }
-
-            char data_block[BLOCK_SIZE];
+            memset(data_block, 0, BLOCK_SIZE);
             data_block[0] = file_number;
 
-            
-            for(int i = 1; i<num_blocks-1;i++){
-                writeBlock(disk, inode_block[i], data_block);
+            for (int i = 1; i < num_blocks; i++)
+            {
+                memcpy(hdd[inode_block[i]], data_block, BLOCK_SIZE);
             }
-            
+
+            for (int i = 0; i < TOTAL_BLOCKS; i++)
+            {
+                writeBlock(disk, i, hdd[i]);
+            }
         }
         else if (strcmp(curr_command, "DELETE") == 0)
         {
